@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dcard發文看板推薦</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #006aa6;
+            --secondary-color: #00324e;
+            --accent-color: #ff6b00;
+            --light-bg: #f8f9fa;
+            --highlight-color: #28a745;
+        }
+        
+        body {
+            background-color: var(--light-bg);
+            padding: 20px;
+            font-family: 'Noto Sans TC', sans-serif;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+        
+        .form-control {
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            padding: 12px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus {
+            box-shadow: 0 0 0 3px rgba(0, 106, 166, 0.2);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .result-box {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 12px;
+            background-color: rgba(0, 106, 166, 0.05);
+            border: 1px solid rgba(0, 106, 166, 0.1);
+            display: none;
+        }
+        
+        .result-box h3 {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .alert-info {
+            background-color: rgba(0, 106, 166, 0.1);
+            border: none;
+            color: var(--primary-color);
+            border-radius: 10px;
+            padding: 15px;
+            font-weight: 500;
+        }
+        
+        .probability-bar {
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        
+        .probability-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            border-radius: 10px;
+            width: 0; /* 起始寬度為 0，用於動畫效果 */
+            transition: width 1.5s ease-out; /* 增加過渡時間和緩動效果 */
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 25px 0;
+        }
+        
+        /* 突出顯示最高機率 */
+        .highest-probability .probability-fill {
+            background-color: var(--highlight-color);
+        }
+        
+        .category-name {
+            font-weight: 600;
+        }
+        
+        .percentage-value {
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .highest-probability .percentage-value {
+            color: var(--highlight-color);
+        }
+        
+        /* 標題建議樣式 */
+        .title-suggestions {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: rgba(0, 106, 166, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 106, 166, 0.1);
+        }
+        
+        .title-suggestions h4 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .title-item {
+            padding: 12px 15px;
+            background-color: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--primary-color);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .title-item:hover {
+            transform: translateX(5px);
+            background-color: rgba(0, 106, 166, 0.05);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .title-item .fa-copy {
+            color: #aaa;
+            float: right;
+            margin-top: 2px;
+            transition: color 0.2s ease;
+        }
+        
+        .title-item:hover .fa-copy {
+            color: var(--primary-color);
+        }
+        
+        .copy-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(40, 167, 69, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000;
+        }
+        
+        .icon-dcard {
+            color: var(--primary-color);
+            margin-right: 8px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+        
+        /* API 說明樣式 */
+        .api-instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(255, 107, 0, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 107, 0, 0.2);
+            font-size: 0.9rem;
+            position: relative;
+        }
+        
+        .api-instructions h5 {
+            color: #ff6b00;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .api-instructions pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+        
+        .api-instructions .api-hint {
+            font-style: italic;
+            margin-top: 10px;
+            color: #666;
+        }
+        
+        .api-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.2s;
+        }
+        
+        .api-close:hover {
+            color: #ff6b00;
+        }
+        
+        /* 熱門關鍵字區域樣式 */
+        .hot-keywords {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: rgba(255, 107, 0, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 107, 0, 0.1);
+        }
+        
+        .hot-keywords h4 {
+            color: #ff6b00;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .keywords-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .keyword-tag {
+            display: inline-flex;
+            align-items: center;
+            background-color: white;
+            border: 1px solid rgba(255, 107, 0, 0.3);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 0.9rem;
+            color: #ff6b00;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .keyword-tag:hover {
+            background-color: rgba(255, 107, 0, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .keyword-tag .popularity {
+            background-color: #ff6b00;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            margin-left: 8px;
+        }
+        
+        .extracted-keywords {
+            margin-top: 15px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .extracted-keywords-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .extracted-keyword {
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-comment-dots icon-dcard"></i>Dcard發文神器</h1>
+            <p class="subtitle">不確定文章該發在哪個看板嗎？ 不知道該取什麼標題嗎? 不知道有哪些熱門標籤嗎?</p>
+            <p style="font-size: 1.5rem; font-weight: bold; background: linear-gradient(90deg, #ff6a00, #ee0979); -webkit-background-clip: text; color: transparent;">
+                🚀 讓AI幫你分析，讓你的文章衝上熱搜！🔥
+            </p>
+        </div>
+        
+        <div class="mb-4">
+            <label for="article" class="form-label">請輸入文章內容：</label>
+            <textarea class="form-control" id="article" rows="6" placeholder="在這裡輸入你想發布的文章內容..."></textarea>
+        </div>
+        <button class="btn btn-primary w-100" onclick="predictCategory()">
+            <i class="fas fa-search me-2"></i>分析文章
+        </button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">正在分析你的文章...</p>
+        </div>
+
+        <div class="result-box" id="resultBox">
+            <h3><i class="fas fa-chart-bar me-2"></i>分析結果</h3>
+            <div class="alert alert-info" id="categoryResult"></div>
+            
+            <h4 class="mt-4">各看板推薦指數：</h4>
+            <div id="probabilities"></div>
+            
+            <!-- 標題建議區域 -->
+            <div class="title-suggestions" id="titleSuggestions" style="display:none;">
+                <h4><i class="fas fa-lightbulb me-2"></i>標題建議</h4>
+                <p class="mb-3">根據您的文章內容和看板特性，以下是一些標題建議：</p>
+                <div id="titleList">
+                    <!-- 這裡會動態添加標題建議 -->
+                </div>
+                
+                <!-- API 密鑰設置說明區域 -->
+                <div class="api-instructions" id="apiInstructions" style="display:none;">
+                    <span class="api-close" onclick="hideApiInstructions()"><i class="fas fa-times"></i></span>
+                    <h5><i class="fas fa-info-circle me-2"></i>啟用高級標題生成</h5>
+                    <p>目前使用的是本地標題生成功能。要獲得更準確、更有創意的標題建議，請設置 Google Gemini API 密鑰：</p>
+                    <pre id="apiInstructionsText"></pre>
+                    <p class="api-hint">設置 API 密鑰後，重新啟動應用程序即可啟用進階 AI 標題生成功能。</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 複製成功提示 -->
+        <div class="copy-message" id="copyMessage">
+            <i class="fas fa-check-circle me-2"></i>已複製到剪貼簿
+        </div>
+        
+        <!-- 熱門關鍵字區域 -->
+        <div class="hot-keywords" id="hotKeywords" style="display:none;">
+            <h4><i class="fas fa-fire me-2"></i>熱門關鍵字推薦</h4>
+            <p class="mb-3">使用以下熱門關鍵字可以增加文章曝光度：</p>
+            <div class="keywords-container" id="hotKeywordsList">
+                <!-- 這裡會動態添加熱門關鍵字標籤 -->
+            </div>
+            
+            <div class="extracted-keywords">
+                <p class="mb-1">從您的文章中提取的關鍵詞：</p>
+                <div class="extracted-keywords-list" id="extractedKeywordsList">
+                    <!-- 這裡會動態添加提取的關鍵詞 -->
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Dcard發文神器器 - 讓你的文章衝上熱搜</p>
+        </footer>
+    </div>
+
+    <script>
+        // 定義類別標籤對應的看板名稱
+        const categoryNames = {
+            'mood': '心情板',
+            'relationship': '感情板',
+            'talk': '閒聊板'
+        };
+        
+        async function predictCategory() {
+            const text = document.getElementById('article').value;
+            if (!text) {
+                alert('請輸入文章內容');
+                return;
+            }
+
+            // 顯示載入中
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultBox').style.display = 'none';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const result = await response.json();
+                
+                // 調試信息
+                console.log("服務器返回結果:", result);
+                console.log("類別映射:", categoryNames);
+                
+                // 顯示結果
+                let categoryText = result.category;
+                if (categoryText === 'mood') {
+                    categoryText = '心情板';
+                } else if (categoryText === 'relationship') {
+                    categoryText = '感情板';
+                } else if (categoryText === 'talk') {
+                    categoryText = '閒聊板';
+                }
+                
+                document.getElementById('categoryResult').textContent = 
+                    `建議發布在：${result.category_name || categoryText} 看板`;
+                
+                // 顯示機率條
+                const probabilitiesDiv = document.getElementById('probabilities');
+                probabilitiesDiv.innerHTML = '';
+                
+                // 先將概率數據轉換為陣列，以便排序
+                const probabilityArray = Object.entries(result.probabilities).map(([category, prob]) => {
+                    return {
+                        category,
+                        probability: prob,
+                        displayName: result.probability_names[category] || category,
+                        percentage: (prob * 100).toFixed(1)
+                    };
+                });
+                
+                // 根據概率從高到低排序
+                probabilityArray.sort((a, b) => b.probability - a.probability);
+                
+                // 找出最高機率
+                const highestProb = probabilityArray[0].probability;
+                
+                // 添加所有機率條，但先將寬度設置為 0
+                for (const item of probabilityArray) {
+                    const isHighest = item.probability === highestProb;
+                    
+                    probabilitiesDiv.innerHTML += `
+                        <div class="mb-3 ${isHighest ? 'highest-probability' : ''}">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="category-name">${item.displayName}</span>
+                                <span class="percentage-value">${item.percentage}%</span>
+                            </div>
+                            <div class="probability-bar">
+                                <div class="probability-fill" data-width="${item.percentage}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 顯示結果框
+                document.getElementById('resultBox').style.display = 'block';
+                
+                // 使用 setTimeout 延遲設置寬度，觸發動畫效果
+                setTimeout(() => {
+                    const fills = document.querySelectorAll('.probability-fill');
+                    fills.forEach(fill => {
+                        fill.style.width = fill.getAttribute('data-width');
+                    });
+                }, 100);
+                
+                // 顯示標題建議
+                const titleSuggestionsDiv = document.getElementById('titleSuggestions');
+                const titleListDiv = document.getElementById('titleList');
+                
+                // 清空現有標題
+                titleListDiv.innerHTML = '';
+                
+                // 檢查是否有標題建議
+                if (result.suggested_titles && result.suggested_titles.length > 0) {
+                    // 添加標題項目
+                    result.suggested_titles.forEach((title, index) => {
+                        const titleItem = document.createElement('div');
+                        titleItem.className = 'title-item';
+                        titleItem.innerHTML = `
+                            <span>${title}</span>
+                            <i class="fas fa-copy" title="複製標題"></i>
+                        `;
+                        titleItem.querySelector('.fa-copy').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            copyToClipboard(title);
+                        });
+                        
+                        // 點擊整個項目同樣複製
+                        titleItem.addEventListener('click', () => {
+                            copyToClipboard(title);
+                        });
+                        
+                        titleListDiv.appendChild(titleItem);
+                    });
+                    
+                    // 顯示標題建議區域
+                    titleSuggestionsDiv.style.display = 'block';
+                    
+                    // 檢查是否有 API 說明
+                    const apiInstructions = document.getElementById('apiInstructions');
+                    const apiInstructionsText = document.getElementById('apiInstructionsText');
+                    
+                    if (result.api_instructions) {
+                        apiInstructionsText.textContent = result.api_instructions;
+                        apiInstructions.style.display = 'block';
+                    } else {
+                        apiInstructions.style.display = 'none';
+                    }
+                } else {
+                    // 隱藏標題建議區域
+                    titleSuggestionsDiv.style.display = 'none';
+                }
+                
+                // 處理熱門關鍵字
+                const hotKeywordsDiv = document.getElementById('hotKeywords');
+                const hotKeywordsList = document.getElementById('hotKeywordsList');
+                const extractedKeywordsList = document.getElementById('extractedKeywordsList');
+                
+                // 清空現有關鍵字
+                hotKeywordsList.innerHTML = '';
+                extractedKeywordsList.innerHTML = '';
+                
+                // 檢查是否有熱門關鍵字
+                if (result.hot_keywords && result.hot_keywords.length > 0) {
+                    // 添加熱門關鍵字標籤
+                    result.hot_keywords.forEach(keyword => {
+                        const keywordTag = document.createElement('div');
+                        keywordTag.className = 'keyword-tag';
+                        keywordTag.innerHTML = `
+                            <span>${keyword.keyword}</span>
+                            <span class="popularity">${keyword.popularity}%</span>
+                        `;
+                        
+                        // 點擊複製關鍵字
+                        keywordTag.addEventListener('click', () => {
+                            copyToClipboard(keyword.keyword);
+                        });
+                        
+                        hotKeywordsList.appendChild(keywordTag);
+                    });
+                    
+                    // 顯示提取的關鍵詞
+                    if (result.extracted_keywords && result.extracted_keywords.length > 0) {
+                        result.extracted_keywords.forEach(keyword => {
+                            const keywordSpan = document.createElement('span');
+                            keywordSpan.className = 'extracted-keyword';
+                            keywordSpan.textContent = keyword;
+                            extractedKeywordsList.appendChild(keywordSpan);
+                        });
+                    }
+                    
+                    // 顯示熱門關鍵字區域
+                    hotKeywordsDiv.style.display = 'block';
+                } else {
+                    // 隱藏熱門關鍵字區域
+                    hotKeywordsDiv.style.display = 'none';
+                }
+            } catch (error) {
+                alert('發生錯誤，請稍後再試');
+                console.error('Error:', error);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        // 複製文字到剪貼簿
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    // 顯示複製成功提示
+                    const copyMessage = document.getElementById('copyMessage');
+                    copyMessage.style.display = 'block';
+                    
+                    // 2秒後隱藏提示
+                    setTimeout(() => {
+                        copyMessage.style.display = 'none';
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('複製失敗: ', err);
+                    alert('複製失敗，請手動複製');
+                });
+        }
+        
+        // 隱藏 API 密鑰說明
+        function hideApiInstructions() {
+            document.getElementById('apiInstructions').style.display = 'none';
+        }
+    </script>
+</body>
+</html> 
